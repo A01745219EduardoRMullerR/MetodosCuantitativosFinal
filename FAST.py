@@ -121,23 +121,48 @@ def calculateAlpha():
 
 def testAck():
     init_time = time.time()
-    file = open("TestAck.txt", 'r')
+    file = open("TestTimeout.txt", 'r')
     lines = file.readlines()
     sender = lines
     receiver = []
     global cwnd
     cwnd = .01
+    Tcwnd = .01
     for line in sender:
         delta = time.time() - init_time
-        print(delta)
+        print("Delta", delta)
+        print("CWND: ", cwnd)
         if (delta > cwnd):
-            print("congestion")
+            print("There's congestion \nDelta CWND: ", delta, cwnd)
             cwnd += 1
             calculateACKcwnd()
         else:
             receiver.append(line)
             
-
+            
+def testLoss():
+    init_time = time.time()
+    file = open("TestLoss.txt", 'r')
+    lines = file.readlines()
+    sender = lines
+    receiver = []
+    Tcwnd = .001
+    receiver.append(sender[0])
+    delta = time.time() - init_time
+    cwnd = delta
+    
+    
+def TestTimeOut():
+    init_time = time.time()
+    file = open("TestTimeout.txt", 'r')
+    lines = file.readlines()
+    sender = lines
+    receiver = []
+    Tcwnd = .001
+    receiver.append(sender[0])
+    delta = time.time() - init_time
+    cwnd = delta
+'''
 
 # main
 def main(): 
@@ -153,5 +178,9 @@ def main():
     calculateBk()
     # Llamar cada 200 s
     calculateAlpha()
+
+'''            
+
+
     
 testAck()
