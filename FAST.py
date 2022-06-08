@@ -141,6 +141,9 @@ def testAck():
             
             
 def testLoss():
+    print("---------------------------------------------------------------------------------------------------")
+    print("------------------------TEST LOSS------------------------------------------------------------------")
+    print("---------------------------------------------------------------------------------------------------\n\n")
     init_time = time.time()
     file = open("TestLoss.txt", 'r')
     lines = file.readlines()
@@ -150,6 +153,7 @@ def testLoss():
     receiver.append(sender[0])
     delta = time.time() - init_time
     cwnd = delta
+    print("Initial Parameters: \n\tTcwnd: ", Tcwnd, "\n\tCwnd: ", cwnd)
     
     
 def TestTimeOut():
@@ -183,4 +187,4 @@ def main():
 
 
     
-testAck()
+testLoss()
