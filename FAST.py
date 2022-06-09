@@ -15,6 +15,7 @@ def calculateTcwnd(alpha,cwnd,Tcwnd,sRTT,minRTT):
     a = (minRTT/sRTT) * cwnd + alpha
     b = -0.5 * cwnd 
     Tcwnd = min((2*cwnd), (b + 0.5*a))
+    return Tcwnd
 
 # Calculate Average flow throughput Bk
 
@@ -22,13 +23,6 @@ def calculateBk(sRtt, T, acksRTT, bk):
     bk = (T * bk) +  (1 - T)*(acksRTT/sRtt) 
     acksRTT -= 1
     return bk, acksRTT
-
-# Calculate ack cwnd 
-def calculateACKcwnd(acksRTT, Tcwnd, cwnd):
-    if (Tcwnd > cwnd and acksRTT > 0):
-        cwnd = (Tcwnd - cwnd)/acksRTT
-    elif(Tcwnd < cwnd):
-        cwnd = Tcwnd
 
 # if Loss 
 def calculateIfLoss(Tcwnd,cwnd,sst):
@@ -64,19 +58,6 @@ def calculateAlpha(bk,alpha):
     # else:
     #     print("gg no alpha: ", alpha)
             
-    
-    
-def TestTimeOut():
-    init_time = time.time()
-    file = open("TestTimeout.txt", 'r')
-    lines = file.readlines()
-    sender = lines
-    receiver = []
-    Tcwnd = .001
-    receiver.append(sender[0])
-    delta = time.time() - init_time
-    cwnd = delta
-
 # main
 def main(): 
     # Initial global variables 
@@ -84,44 +65,51 @@ def main():
     sRTT = 50 #ms   Average Round trip time. 
     T = 0.5  # Peso moral de su proyecto, profe. 
     acksRTT = 0 # Numero de paquetes del archivo txt. 
-    Tcwnd = 0 # Target Congestion window. 
-    cwnd = 0 # Actual Congestion window. 
+    Tcwnd = 10 # Target Congestion window. 
+    cwnd = 5 # Actual Congestion window. 
     bk = 0  # Average flow
     sst = 0 # Slow Start Time.  
     alpha = 8 # Parametro de congestion de paqueqtes
     receiver = []
-
-    # Enviar paquetes 
-    data_to_send, acksRTT = loadData("TestTimeout.txt",acksRTT) 
-    print("acksRTT",acksRTT)
+    counter_to_timeout = 0 
+    state = ""
+    # Enviar paquetes   
+    data_to_send, acksRTT = loadData("TestAck.txt",acksRTT) 
+    #print("acksRTT",acksRTT)
     for line in  data_to_send:
         init_time = time.time() #Timestamp
-        
         receiver.append(line) #Line from one list goes to the other
 
         delta = time.time() - init_time #How much time it took
         # Calcular BK
         bk, acksRTT = calculateBk(sRTT, T, acksRTT, bk)
-        print(bk)
         # Calcular alpha inicial.
         calculateAlpha(bk, alpha)
-
         # Si acksRtt > alpha algo Loss 
         if ( acksRTT > alpha ):
+            state = "Loss"
             calculateIfLoss(Tcwnd,cwnd,sst)
+            counter_to_timeout +=1
             # if misma situacion por x timepo llama a timeout. 
+            if (counter_to_timeout>10):
+                calculateTimeout(minRTT,sRTT,T,acksRTT,Tcwnd,cwnd,bk,sst,alpha)
+                state = "Timeout"
 
         # if Tcwnd > cwnd calcular cwnd 
         if (Tcwnd > cwnd):
-            calculateTcwnd(alpha,cwnd,Tcwnd,sRTT,minRTT)
-
+            state = "ACK"
+            if acksRTT != 0:
+                cwnd = (Tcwnd - cwnd)/acksRTT
+            Tcwnd = calculateTcwnd(alpha,cwnd,Tcwnd,sRTT,minRTT)
+        else:
+            cwnd = Tcwnd
         # Llamar cada 20ms 
         if ((int(delta*10))%2 == 0):
-            calculateTcwnd(alpha,cwnd,Tcwnd,sRTT,minRTT)
+            Tcwnd = calculateTcwnd(alpha,cwnd,Tcwnd,sRTT,minRTT)
 
         # Llamar cada 200 s
         if (int(delta/100)%2 == 0):
             calculateAlpha(bk, alpha)
-        #print("Parameters: \n\tTcwnd: ", Tcwnd, "\n\tCwnd: ", cwnd)
+        print("Parameters: \n\tTcwnd: ", Tcwnd, "\n\tCwnd: ", cwnd)
     
 main()
