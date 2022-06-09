@@ -2,96 +2,48 @@ from email.utils import localtime
 import math
 import time
 
-global minRTT  
-global sRTT
-global T  
-global acksRTT 
-global Tcwnd 
-global cwnd 
-global bk 
-global sst  
-global alpha
-
-# Initial global variables 
-minRTT = 20 #ms minimum Round trip time 
-sRTT = 50 #ms   Average Round trip time. 
-T = 0.5  # Peso moral de su proyecto, profe. 
-acksRTT = 0 # Numero de paquetes del archivo txt. 
-Tcwnd = 0 # Target Congestion window. 
-cwnd = 0 # Actual Congestion window. 
-bk = 0  # Average flow
-sst = 0 # Slow Start Time.  
-alpha = 0 # Parametro de congestion de paqueqtes
-
 # Load data. 
-def loadData(txt): 
-    global acksRTT
-    
+def loadData(txt,acksRTT): 
     file = open(txt, 'r')
     lines = file.readlines()
     acksRTT = len(lines) # Numero de paquetes del archivo txt
     file.close()
-    return lines
+    return lines, acksRTT
 
 # Calculate target cwnd
-def calculateTcwnd():
-    global minRTT  
-    global sRTT 
-    global Tcwnd 
-    global cwnd  
-    global alpha
+def calculateTcwnd(alpha,cwnd,Tcwnd,sRTT,minRTT):
     a = (minRTT/sRTT) * cwnd + alpha
     b = -0.5 * cwnd 
     Tcwnd = min((2*cwnd), (b + 0.5*a))
 
 # Calculate Average flow throughput Bk
 
-def calculateBk():
-    global sRTT
-    global T  
-    global acksRTT 
-    global bk 
-    bk = T * bk +  (1 - T )*(acksRTT/sRTT) 
-    acksRTT = 0
+def calculateBk(sRtt, T, acksRTT, bk):
+    bk = (T * bk) +  (1 - T)*(acksRTT/sRtt) 
+    acksRTT -= 1
+    return bk, acksRTT
 
 # Calculate ack cwnd 
-def calculateACKcwnd():
-    global acksRTT 
-    global Tcwnd 
-    global cwnd 
+def calculateACKcwnd(acksRTT, Tcwnd, cwnd):
     if (Tcwnd > cwnd and acksRTT > 0):
         cwnd = (Tcwnd - cwnd)/acksRTT
     elif(Tcwnd < cwnd):
         cwnd = Tcwnd
 
 # if Loss 
-def calculateIfLoss():
-    global Tcwnd 
-    global cwnd 
-    global sst  
+def calculateIfLoss(Tcwnd,cwnd,sst):
     cwnd = cwnd/2
     Tcwnd = cwnd
     sst = cwnd
 
 # Calculate Timeout
-def calculateTimeout():
-    global minRTT  
-    global sRTT
-    global T  
-    global acksRTT 
-    global Tcwnd 
-    global cwnd 
-    global bk 
-    global sst  
-    global alpha
+def calculateTimeout(minRTT,sRTT,T,acksRTT,Tcwnd,cwnd,bk,sst,alpha):
     sst = max((cwnd/2),sRTT)
     cwnd = sRTT
     Tcwnd = cwnd
 
 # Calculate alpha 
-def calculateAlpha():
-    global bk
-    global alpha
+def calculateAlpha(bk,alpha):
     a1=8
     a2=20
     a3=200
@@ -109,44 +61,9 @@ def calculateAlpha():
         alpha = a3
     elif(alpha == a3 & bk <= m2m1):
         alpha = a2
-    else:
-        print("gg no alpha: ", alpha)
-    
-    return alpha
-
-def testAck():
-    init_time = time.time()
-    sender = loadData("TestTimeout.txt")
-    receiver = []
-    global cwnd
-    cwnd = .01
-    Tcwnd = .01
-    for line in sender:
-        delta = time.time() - init_time
-        print("Delta", delta)
-        print("CWND: ", cwnd)
-        if (delta > cwnd):
-            print("There's congestion \nDelta CWND: ", delta, cwnd)
-            cwnd += 1
-            calculateACKcwnd()
-        else:
-            receiver.append(line)
+    # else:
+    #     print("gg no alpha: ", alpha)
             
-            
-def testLoss():
-    print("---------------------------------------------------------------------------------------------------")
-    print("------------------------TEST LOSS------------------------------------------------------------------")
-    print("---------------------------------------------------------------------------------------------------\n\n")
-    init_time = time.time()
-    file = open("TestLoss.txt", 'r')
-    lines = file.readlines()
-    sender = lines
-    receiver = []
-    Tcwnd = .001
-    receiver.append(sender[0])
-    delta = time.time() - init_time
-    cwnd = delta
-    print("Initial Parameters: \n\tTcwnd: ", Tcwnd, "\n\tCwnd: ", cwnd)
     
     
 def TestTimeOut():
@@ -162,16 +79,21 @@ def TestTimeOut():
 
 # main
 def main(): 
-    
-    global acksRTT 
-    global Tcwnd 
-    global cwnd  
-    global alpha
+    # Initial global variables 
+    minRTT = 20 #ms minimum Round trip time 
+    sRTT = 50 #ms   Average Round trip time. 
+    T = 0.5  # Peso moral de su proyecto, profe. 
+    acksRTT = 0 # Numero de paquetes del archivo txt. 
+    Tcwnd = 0 # Target Congestion window. 
+    cwnd = 0 # Actual Congestion window. 
+    bk = 0  # Average flow
+    sst = 0 # Slow Start Time.  
+    alpha = 8 # Parametro de congestion de paqueqtes
     receiver = []
 
     # Enviar paquetes 
-    data_to_send = loadData("TestAck.txt") 
-    
+    data_to_send, acksRTT = loadData("TestTimeout.txt",acksRTT) 
+    print("acksRTT",acksRTT)
     for line in  data_to_send:
         init_time = time.time() #Timestamp
         
@@ -179,27 +101,27 @@ def main():
 
         delta = time.time() - init_time #How much time it took
         # Calcular BK
-        calculateBk()
+        bk, acksRTT = calculateBk(sRTT, T, acksRTT, bk)
+        print(bk)
         # Calcular alpha inicial.
-        calculateAlpha()
+        calculateAlpha(bk, alpha)
 
         # Si acksRtt > alpha algo Loss 
         if ( acksRTT > alpha ):
-            calculateIfLoss()
+            calculateIfLoss(Tcwnd,cwnd,sst)
+            # if misma situacion por x timepo llama a timeout. 
 
         # if Tcwnd > cwnd calcular cwnd 
         if (Tcwnd > cwnd):
-            calculateTcwnd()
+            calculateTcwnd(alpha,cwnd,Tcwnd,sRTT,minRTT)
 
         # Llamar cada 20ms 
         if ((int(delta*10))%2 == 0):
-            calculateTcwnd()
+            calculateTcwnd(alpha,cwnd,Tcwnd,sRTT,minRTT)
 
         # Llamar cada 200 s
         if (int(delta/100)%2 == 0):
-            calculateAlpha()
-        print("Parameters: \n\tTcwnd: ", Tcwnd, "\n\tCwnd: ", cwnd)
-
-
+            calculateAlpha(bk, alpha)
+        #print("Parameters: \n\tTcwnd: ", Tcwnd, "\n\tCwnd: ", cwnd)
     
 main()
